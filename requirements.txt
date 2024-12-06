@@ -1,0 +1,8 @@
+tornado==6.4
+pymongo==4.6.1
+python-dotenv==1.0.0
+requests==2.31.0
+bson==0.5.10
+python-jose==3.3.0
+bcrypt==4.1.1
+websockets==12.0

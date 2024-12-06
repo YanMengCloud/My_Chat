@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="fas fa-robot"></i> 模型管理</h3>
+            </div>
+            <div class="models-container" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+                <div id="modelGroups">
+                    <!-- 模型组将通过JavaScript动态加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.provider-section {
+    margin-bottom: 2rem;
+}
+
+.provider-header {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.model-card {
+    background-color: white;
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.model-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.model-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.model-id {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.model-info {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+
+{% end %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadModels();
+});
+
+async function loadModels() {
+    try {
+        const response = await fetch('/api/models?group=true', {
+            headers: {
+                'X-XSRFToken': getCookie("_xsrf")
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('获取模型列表失败');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || '获取模型列表失败');
+        }
+        
+        const modelGroups = document.getElementById('modelGroups');
+        modelGroups.innerHTML = ''; // 清空现有内容
+        
+        // 获取提供商图标的函数
+        function getProviderIcon(provider) {
+            const icons = {
+                'openai': 'fa-robot',
+                'google': 'fa-google',
+                'anthropic': 'fa-brain',
+                'unknown': 'fa-question-circle'
+            };
+            return icons[provider.toLowerCase()] || 'fa-cube';
+        }
+        
+        // 渲染每个提供商的模型组
+        data.model_groups.forEach(group => {
+            const providerSection = document.createElement('div');
+            providerSection.className = 'provider-section';
+            
+            const providerName = group.provider.charAt(0).toUpperCase() + group.provider.slice(1);
+            const providerIcon = getProviderIcon(group.provider);
+            
+            providerSection.innerHTML = `
+                <div class="provider-header">
+                    <h4 class="mb-0">
+                        <i class="fas ${providerIcon} me-2"></i>
+                        ${providerName}
+                        <small class="text-muted">(${group.models.length}个模型)</small>
+                    </h4>
+                </div>
+                <div class="row">
+                    ${group.models.map(model => `
+                        <div class="col-md-6 col-lg-4">
+                            <div class="model-card">
+                                <div class="model-name">${model.name}</div>
+                                <div class="model-id">${model.id}</div>
+                                <div class="model-info">
+                                    <small class="text-muted">
+                                        创建时间: ${new Date(model.created * 1000).toLocaleDateString()}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            modelGroups.appendChild(providerSection);
+        });
+        
+    } catch (error) {
+        console.error('加载模型列表失败:', error);
+        const modelGroups = document.getElementById('modelGroups');
+        modelGroups.innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                加载模型列表失败: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// 获取cookie的辅助函数
+function getCookie(name) {
+    const r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+    return r ? r[1] : undefined;
+}
+</script>
+{% end %}

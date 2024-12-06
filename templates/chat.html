@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- XSRF Token -->
+{% module xsrf_form_html() %}
+
+<!-- 提示消息容器 -->
+<div class="alerts-container" id="alertsContainer"></div>
+
+<!-- 聊天页面 -->
+<div class="chat-container">
+    <!-- 左侧会话列表 -->
+    <div class="conversations-sidebar">
+        <div class="conversations-header">
+            <h5 class="mb-0">会话列表</h5>
+            <button class="btn btn-sm btn-primary" id="newConversationBtn">
+                <i class="fas fa-plus"></i> 新建会话
+            </button>
+        </div>
+        <div class="conversations-search">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" class="form-control" id="conversationSearch" placeholder="搜索会话...">
+            </div>
+        </div>
+        <div class="conversations-list" id="conversationsList">
+            <!-- 会话列表将通过JavaScript动态加载 -->
+        </div>
+    </div>
+
+    <!-- 右侧聊天区域 -->
+    <div class="chat-main">
+        <!-- 聊天头部 -->
+        <div class="chat-header">
+            <div class="chat-title">
+                <h5 class="mb-0" id="currentConversationTitle">选择或创建新会话</h5>
+                <small class="text-muted" id="currentConversationPrompt"></small>
+            </div>
+            <div class="chat-actions">
+                <button class="btn btn-sm btn-outline-secondary" id="editPromptBtn" title="编辑系统提示词" disabled>
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" id="deleteConversationBtn" title="删除会话" disabled>
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 聊天消息区域 -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- 欢迎消息 -->
+            <div class="welcome-message">
+                <div class="welcome-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h3>欢迎使用 My Chat</h3>
+                <p>选择一个会话或创建新会话开始对话</p>
+                <button class="btn btn-primary" onclick="document.getElementById('newConversationBtn').click()">
+                    <i class="fas fa-plus"></i> 新建会话
+                </button>
+            </div>
+        </div>
+
+        <!-- 聊天输入区域 -->
+        <div class="chat-input">
+            <div class="input-group">
+                <textarea class="form-control" id="messageInput" rows="1" 
+                    placeholder="选择或创建会话后开始对话..." disabled></textarea>
+                <button class="btn btn-primary" id="sendMessageBtn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新建会话模态框 -->
+<div class="modal fade" id="newConversationModal" tabindex="-1" aria-labelledby="newConversationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newConversationModalLabel">新建会话</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newConversationForm">
+                    <div class="mb-3">
+                        <label for="conversationTitle" class="form-label">会话标题</label>
+                        <input type="text" class="form-control" id="conversationTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modelSelect" class="form-label">选择模型</label>
+                        <select class="form-select" id="modelSelect" required>
+                            <option value="">请选择模型...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="systemPrompt" class="form-label">系统提示词</label>
+                        <textarea class="form-control" id="systemPrompt" rows="3" placeholder="可选，用于设置AI助手的角色和行为"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="createConversationBtn">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑系统提示词模态框 -->
+<div class="modal fade" id="editPromptModal" tabindex="-1" aria-labelledby="editPromptModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPromptModalLabel">编辑会话设置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPromptForm">
+                    <div class="mb-3">
+                        <label for="editModelSelect" class="form-label">选择模型</label>
+                        <select class="form-select" id="editModelSelect" required>
+                            <option value="">请选择模型...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSystemPrompt" class="form-label">系统提示词</label>
+                        <textarea class="form-control" id="editSystemPrompt" rows="3" placeholder="可选，用于设置AI助手的角色和行为"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="savePromptBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 加载依赖库 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.7.0/build/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.7.0/build/styles/github-dark.min.css">
+
+<!-- 配置 Marked.js -->
+<script>
+marked.setOptions({
+    highlight: function(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+            return hljs.highlight(code, { language: lang }).value;
+        }
+        return hljs.highlightAuto(code).value;
+    },
+    breaks: true,
+    gfm: true
+});
+</script>
+{% end %}
+
+{% block extra_js %}
+<!-- 加载自定义脚本 -->
+<script src="{{ static_url('js/base.js') }}"></script>
+<script src="{{ static_url('js/models.js') }}"></script>
+<script src="{{ static_url('js/chat.js') }}"></script>
+{% end %}

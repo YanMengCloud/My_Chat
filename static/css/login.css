@@ -1,0 +1,164 @@
+/* 登录页面样式 */
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 420px;
+}
+
+.login-box {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.brand-logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.brand-logo i {
+    font-size: 40px;
+    color: white;
+}
+
+.login-box h2 {
+    color: #2d3748;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.login-box p {
+    color: #718096;
+}
+
+.form-label {
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.input-group {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border: none;
+    color: #718096;
+}
+
+.form-control {
+    border: none;
+    padding: 12px;
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    box-shadow: none;
+    border-color: transparent;
+    background-color: #fff;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-outline-secondary {
+    border: none;
+    background-color: transparent;
+    color: #718096;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+    color: #4a5568;
+}
+
+.alert-danger {
+    background-color: #fff5f5;
+    border-color: #feb2b2;
+    color: #c53030;
+}
+
+/* 响应式调整 */
+@media (max-width: 576px) {
+    .login-box {
+        padding: 30px 20px;
+    }
+    
+    .brand-logo {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .brand-logo i {
+        font-size: 30px;
+    }
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-box {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* 输入框焦点效果 */
+.form-control:focus {
+    background-color: #fff;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+/* 错误提示样式 */
+.invalid-feedback {
+    font-size: 0.875rem;
+    color: #e53e3e;
+    margin-top: 4px;
+}
+
+/* 版权信息样式 */
+.text-muted {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 安全提示样式 */
+.login-box .text-muted {
+    color: #718096 !important;
+} 

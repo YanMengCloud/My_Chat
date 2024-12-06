@@ -1,0 +1,231 @@
+#chatMessages {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 1.5rem;
+}
+
+.message {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+    gap: 0.5rem;
+    position: relative;
+    animation: message-fade-in 0.3s ease-out;
+}
+
+.message.user {
+    align-self: flex-end;
+}
+
+.message.assistant {
+    align-self: flex-start;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.5rem;
+}
+
+.message-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bs-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.message.assistant .message-avatar {
+    background: var(--chat-bubble-bg);
+}
+
+.message-avatar i {
+    color: white;
+    font-size: 12px;
+}
+
+.message.assistant .message-avatar i {
+    color: var(--bs-primary);
+}
+
+.message-name {
+    font-size: 0.875rem;
+    color: var(--bs-secondary);
+}
+
+.message-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.message-content {
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: var(--chat-bubble-bg);
+    color: var(--chat-bubble-color);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.message.user .message-content {
+    background: var(--bs-primary);
+    color: white;
+    border-top-right-radius: 0.25rem;
+}
+
+.message.assistant .message-content {
+    background: var(--chat-bubble-bg);
+    color: var(--chat-bubble-color);
+    border-top-left-radius: 0.25rem;
+}
+
+.message-info {
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+    padding: 0 0.5rem;
+}
+
+.message.user .message-info {
+    text-align: right;
+}
+
+/* Markdown 内容样式 */
+.message-content > *:first-child {
+    margin-top: 0;
+}
+
+.message-content > *:last-child {
+    margin-bottom: 0;
+}
+
+.message-content p {
+    margin: 0.75rem 0;
+}
+
+.message-content p:first-child {
+    margin-top: 0;
+}
+
+.message-content p:last-child {
+    margin-bottom: 0;
+}
+
+.message-content ul,
+.message-content ol {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+}
+
+.message-content li {
+    margin: 0.25rem 0;
+}
+
+.message-content li > p {
+    margin: 0.25rem 0;
+}
+
+.message-content blockquote {
+    margin: 0.75rem 0;
+    padding-left: 1rem;
+    border-left: 3px solid var(--bs-primary);
+    color: var(--bs-secondary);
+}
+
+.message-content hr {
+    margin: 1rem 0;
+    border: 0;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.message-content table {
+    margin: 0.75rem 0;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.message-content th,
+.message-content td {
+    padding: 0.5rem;
+    border: 1px solid var(--bs-border-color);
+}
+
+.message-content th {
+    background: var(--chat-bubble-bg);
+    font-weight: 600;
+}
+
+/* 代码块样式 */
+.message-content pre {
+    background: var(--code-block-bg);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    overflow-x: auto;
+}
+
+.message-content code {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.875rem;
+    color: var(--code-color);
+    background: var(--inline-code-bg);
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+}
+
+.message-content pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    white-space: pre;
+}
+
+/* 流式响应动画 */
+@keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.message.streaming .message-content::after {
+    content: '▋';
+    display: inline-block;
+    animation: cursor-blink 1s infinite;
+    margin-left: 0.2em;
+    color: var(--bs-primary);
+}
+
+/* 消息淡入动画 */
+@keyframes message-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 暗色主题适配 */
+[data-bs-theme="dark"] {
+    --chat-bubble-bg: var(--bs-gray-800);
+    --chat-bubble-color: var(--bs-light);
+    --code-block-bg: var(--bs-gray-900);
+    --code-color: var(--bs-light);
+    --inline-code-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* 亮色主题适配 */
+[data-bs-theme="light"] {
+    --chat-bubble-bg: var(--bs-gray-100);
+    --chat-bubble-color: var(--bs-dark);
+    --code-block-bg: var(--bs-gray-100);
+    --code-color: var(--bs-dark);
+    --inline-code-bg: rgba(0, 0, 0, 0.05);
+} 
