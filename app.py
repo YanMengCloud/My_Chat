@@ -10,6 +10,10 @@ from handlers.auth import AuthHandler
 from handlers.conversation import ConversationHandler
 from config.settings import SETTINGS
 from utils.database import Database
+import tornado.options
+
+# 创建logger实例
+logger = logging.getLogger(__name__)
 
 
 class BaseHandler(RequestHandler):
@@ -78,7 +82,7 @@ def make_app():
             (r"/api/models", ModelsHandler),  # 模型管理API
             (r"/api/database(?:/([^/]+))?", DatabaseHandler),  # 数据库管理API
             (
-                r"/api/conversations(?:/([^/]+))?(?:/([^/]+))?",
+                r"/api/conversations(?:/([^/]+))?(?:/([^/]+))?(?:/([^/]+))?",
                 ConversationHandler,
             ),  # 会话管理API
         ],
@@ -94,32 +98,35 @@ def make_app():
 def main():
     """主函数"""
     try:
+        # 配置日志
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+
+        # 解析命令行参数
+        tornado.options.parse_command_line()
+
+        # 初始化数据库连接
+        mongodb_uri = (
+            f"mongodb://{SETTINGS['database']['host']}:{SETTINGS['database']['port']}"
+        )
+        Database.initialize(mongodb_uri, SETTINGS["database"]["name"])
+        logger.info("数据库初始化成功")
+
+        # 创建应用实例
         app = make_app()
         app.listen(SETTINGS["port"])
-        logging.info(f"服务器启动在 http://localhost:{SETTINGS['port']}")
-
-        # 注册清理函数
-        def cleanup():
-            logging.info("正在关闭服务器...")
-            Database.cleanup()
-            logging.info("服务器已关闭")
-
-        import atexit
-
-        atexit.register(cleanup)
+        logger.info(f"服务器启动在 http://localhost:{SETTINGS['port']}")
 
         # 启动事件循环
         IOLoop.current().start()
     except Exception as e:
-        logging.error(f"服务器启动失败: {str(e)}")
+        logger.error(f"服务器启动失败: {str(e)}")
         raise
     finally:
         Database.cleanup()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
     main()

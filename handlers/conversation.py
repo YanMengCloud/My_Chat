@@ -17,59 +17,61 @@ class ConversationHandler(RequestHandler):
         user_id = self.get_secure_cookie("user_id")
         return user_id.decode("utf-8") if user_id else None
 
-    def get(self, conversation_id=None, action=None):
+    async def get(self, conversation_id=None, action=None, sub_action=None):
         """处理GET请求"""
         try:
-            if not self.current_user:
+            # 验证用户登录状态
+            user_id = self.get_current_user()
+            if not user_id:
                 self.set_status(401)
-                self.write({"success": False, "error": "未登录"})
+                self.write({"error": "请先登录"})
                 return
 
-            if conversation_id:
+            if not conversation_id:
+                # 获取会话列表
+                conversations = Database.get_conversations(user_id)
+                self.write({"conversations": conversations})
+                return
+
+            if action == "messages":
+                if sub_action == "locate":
+                    # 定位消息
+                    message_id = self.get_argument("message_id", "")
+                    result = Database.locate_message(conversation_id, message_id)
+                    if "error" in result:
+                        self.set_status(404)
+                        self.write({"error": result["error"]})
+                        return
+                    self.write(result)
+                else:
+                    # 获取消息列表
+                    page_size = int(self.get_argument("page_size", 10))
+                    page_token = self.get_argument("page_token", None)
+                    messages = Database.get_messages(
+                        conversation_id, page_size, page_token
+                    )
+                    self.write(messages)
+            elif action == "search":
+                # 搜索消息
+                query = self.get_argument("q", "")
+                messages = Database.search_messages(conversation_id, query)
+                self.write({"messages": messages})
+            else:
                 # 获取单个会话
                 conversation = Database.get_conversation(conversation_id)
                 if not conversation:
                     self.set_status(404)
-                    self.write({"success": False, "error": "会话不存在"})
+                    self.write({"error": "会话不存在"})
                     return
-
-                # 验证用户权限
-                if str(conversation["user_id"]) != self.current_user:
+                if str(conversation.get("user_id")) != user_id:
                     self.set_status(403)
-                    self.write({"success": False, "error": "无权访问此会话"})
+                    self.write({"error": "无权访问此会话"})
                     return
-
-                if action == "messages":
-                    # 获取会话消息
-                    messages = Database.get_messages(conversation_id)
-                    self.write(
-                        {
-                            "success": True,
-                            "messages": json.loads(json_util.dumps(messages)),
-                        }
-                    )
-                else:
-                    # 返回会话信息
-                    self.write(
-                        {
-                            "success": True,
-                            "conversation": json.loads(json_util.dumps(conversation)),
-                        }
-                    )
-            else:
-                # 获取用户的所有会话
-                conversations = Database.get_conversations(self.current_user)
-                self.write(
-                    {
-                        "success": True,
-                        "conversations": json.loads(json_util.dumps(conversations)),
-                    }
-                )
-
+                self.write({"conversation": conversation})
         except Exception as e:
             logger.error(f"处理请求失败: {str(e)}")
             self.set_status(500)
-            self.write({"success": False, "error": str(e)})
+            self.write({"error": str(e)})
 
     def post(self, conversation_id=None, action=None):
         """处理POST请求"""

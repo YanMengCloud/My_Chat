@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_url('css/chat.css') }}">
+{% end %}
+
 {% block content %}
 <!-- XSRF Token -->
 {% module xsrf_form_html() %}
@@ -34,16 +38,16 @@
     <div class="chat-main">
         <!-- 聊天头部 -->
         <div class="chat-header">
-            <div class="chat-title">
-                <h5 class="mb-0" id="currentConversationTitle">选择或创建新会话</h5>
-                <small class="text-muted" id="currentConversationPrompt"></small>
-            </div>
+            <h2 id="currentConversationTitle">请选择或创建会话</h2>
             <div class="chat-actions">
-                <button class="btn btn-sm btn-outline-secondary" id="editPromptBtn" title="编辑系统提示词" disabled>
-                    <i class="fas fa-edit"></i>
+                <button class="btn btn-outline-secondary" id="searchMessagesBtn" disabled>
+                    <i class="fas fa-search"></i> 搜索记录
                 </button>
-                <button class="btn btn-sm btn-outline-danger" id="deleteConversationBtn" title="删除会话" disabled>
-                    <i class="fas fa-trash"></i>
+                <button class="btn btn-outline-secondary" id="editPromptBtn" disabled>
+                    <i class="fas fa-cog"></i> 设置
+                </button>
+                <button class="btn btn-outline-danger" id="deleteConversationBtn" disabled>
+                    <i class="fas fa-trash"></i> 删除
                 </button>
             </div>
         </div>
@@ -77,12 +81,12 @@
 </div>
 
 <!-- 新建会话模态框 -->
-<div class="modal fade" id="newConversationModal" tabindex="-1" aria-labelledby="newConversationModalLabel" aria-hidden="true">
+<div class="modal fade" id="newConversationModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="newConversationModalLabel">新建会话</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">新建会话</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="newConversationForm">
@@ -111,12 +115,12 @@
 </div>
 
 <!-- 编辑系统提示词模态框 -->
-<div class="modal fade" id="editPromptModal" tabindex="-1" aria-labelledby="editPromptModalLabel" aria-hidden="true">
+<div class="modal fade" id="editPromptModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="editPromptModalLabel">编辑会话设置</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">编辑会话设置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="editPromptForm">
@@ -135,6 +139,32 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-primary" id="savePromptBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 搜索历史记录模态框 -->
+<div class="modal fade" id="searchHistoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">搜索历史记录</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="search-form mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="historySearchInput" 
+                            placeholder="输入关键词搜索...">
+                        <button class="btn btn-primary" id="searchHistoryBtn">
+                            <i class="fas fa-search"></i> 搜索
+                        </button>
+                    </div>
+                </div>
+                <div id="searchHistoryResults" class="search-results">
+                    <!-- 搜索结果将在这里动态显示 -->
+                </div>
             </div>
         </div>
     </div>
@@ -165,4 +195,5 @@ marked.setOptions({
 <script src="{{ static_url('js/base.js') }}"></script>
 <script src="{{ static_url('js/models.js') }}"></script>
 <script src="{{ static_url('js/chat.js') }}"></script>
+<script src="{{ static_url('js/messages-search.js') }}"></script>
 {% end %}

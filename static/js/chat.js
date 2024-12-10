@@ -16,6 +16,24 @@ const state = {
     currentContent: '',  // 当前消息内容
 };
 
+// 初始化应用
+window.chatApp = {
+    currentConversation: null,
+    models: [],
+    conversations: [],
+    messageLoadingState: {
+        page: 1,
+        loading: false,
+        hasMore: true,
+        pageSize: 10,
+        totalCount: 0,
+        loadedMessages: new Set()
+    },
+    ws: null,
+    currentAiMessage: null,
+    currentContent: ''
+};
+
 // 工具函数
 function showError(message) {
     console.error(message);
@@ -239,7 +257,7 @@ function resetChatUI() {
     const titleElement = document.getElementById('currentConversationTitle');
     const promptElement = document.getElementById('currentConversationPrompt');
 
-    if (titleElement) titleElement.textContent = '请选择或创建会话';
+    if (titleElement) titleElement.textContent = '选择或创建会话';
     if (promptElement) promptElement.textContent = '';
 }
 
@@ -285,6 +303,7 @@ async function switchConversation(conversationId) {
         const deleteConversationBtn = document.getElementById('deleteConversationBtn');
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const searchMessagesBtn = document.getElementById('searchMessagesBtn');
 
         if (titleElement) {
             titleElement.textContent = data.conversation.title || '未名会话';
@@ -304,6 +323,7 @@ async function switchConversation(conversationId) {
         if (deleteConversationBtn) deleteConversationBtn.disabled = false;
         if (messageInput) messageInput.disabled = false;
         if (sendMessageBtn) sendMessageBtn.disabled = false;
+        if (searchMessagesBtn) searchMessagesBtn.disabled = false;
 
         // 更新会话列表中的活动状态
         const conversationItems = document.querySelectorAll('.conversation-item');
@@ -345,12 +365,12 @@ async function loadMessages(conversationId, reset = true) {
         if (reset) {
             // 重置加载状态
             state.messageLoadingState = {
-                page: 1,
                 loading: false,
                 hasMore: true,
                 pageSize: 10,
                 totalCount: 0,
-                loadedMessages: new Set()
+                loadedMessages: new Set(),
+                nextPageToken: null
             };
             // 清空消息区域
             const messagesContainer = document.getElementById('chatMessages');
@@ -365,27 +385,19 @@ async function loadMessages(conversationId, reset = true) {
         }
 
         state.messageLoadingState.loading = true;
-        console.log('加载会话消息:', conversationId, '页码:', state.messageLoadingState.page);
+        console.log('加载会话消息:', conversationId);
 
-        // 如果是第一次加载，先添加历史记录结束提示
-        if (state.messageLoadingState.page === 1) {
-            const messagesContainer = document.getElementById('chatMessages');
-            if (messagesContainer) {
-                const endIndicator = document.createElement('div');
-                endIndicator.className = 'history-end-indicator';
-                endIndicator.textContent = '以上是全部历史记录';
-                messagesContainer.appendChild(endIndicator);
-            }
+        // 构建URL
+        let url = `/api/conversations/${conversationId}/messages?page_size=${state.messageLoadingState.pageSize}`;
+        if (state.messageLoadingState.nextPageToken) {
+            url += `&page_token=${state.messageLoadingState.nextPageToken}`;
         }
 
-        const response = await fetch(
-            `/api/conversations/${conversationId}/messages?page=${state.messageLoadingState.page}&page_size=${state.messageLoadingState.pageSize}`, 
-            {
-                headers: {
-                    'X-XSRFToken': getCookie('_xsrf')
-                }
+        const response = await fetch(url, {
+            headers: {
+                'X-XSRFToken': getCookie('_xsrf')
             }
-        );
+        });
 
         if (!response.ok) {
             throw new Error(`服务器错误: ${response.status}`);
@@ -397,7 +409,12 @@ async function loadMessages(conversationId, reset = true) {
         const messagesContainer = document.getElementById('chatMessages');
         if (!messagesContainer) return;
 
-        if (data.messages && data.messages.length > 0) {
+        // 更新总消息数和下一页标记
+        state.messageLoadingState.totalCount = data.total || 0;
+        state.messageLoadingState.nextPageToken = data.next_page_token;
+        state.messageLoadingState.hasMore = !!data.next_page_token;
+
+        if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
             // 过滤掉已加载的消息
             const newMessages = data.messages.filter(msg => !state.messageLoadingState.loadedMessages.has(msg._id));
             
@@ -407,55 +424,71 @@ async function loadMessages(conversationId, reset = true) {
                 return;
             }
 
-            // 按时间正序排列消息
-            const sortedMessages = [...newMessages].sort((a, b) => 
-                new Date(a.created_at) - new Date(b.created_at)
-            );
-            
+            // 记录当前滚动位置和高度
+            const scrollHeight = messagesContainer.scrollHeight;
+            const scrollTop = messagesContainer.scrollTop;
+
             // 添加消息
-            sortedMessages.forEach(message => {
-                if (!state.messageLoadingState.loadedMessages.has(message._id)) {
-                    addMessageToChat(message, null, true);
-                    state.messageLoadingState.loadedMessages.add(message._id);
-                    state.messageLoadingState.totalCount++;
-                }
-            });
-
-            // 更新加载状态
-            state.messageLoadingState.page += 1;
-            state.messageLoadingState.hasMore = data.messages.length >= state.messageLoadingState.pageSize;
-
-            // 如果是第一页，滚动到部
-            if (state.messageLoadingState.page === 2) {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-        } else {
-            // 如果没有获取到任何消息
-            state.messageLoadingState.hasMore = false;
-            
             if (reset) {
-                // 显示空消息提示
-                messagesContainer.innerHTML = `
-                    <div class="empty-messages">
-                        <div class="icon">
-                            <i class="fas fa-comments"></i>
+                // 首次加载时，按倒序添加到底部
+                newMessages.reverse().forEach(message => {
+                    if (!state.messageLoadingState.loadedMessages.has(message._id)) {
+                        addMessageToChat(message, null, true);  // appendToBottom = true
+                        state.messageLoadingState.loadedMessages.add(message._id);
+                    }
+                });
+                // 滚动到底部
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            } else {
+                // 加载更多时，在顶部插入消息
+                newMessages.forEach(message => {
+                    if (!state.messageLoadingState.loadedMessages.has(message._id)) {
+                        addMessageToChat(message, null, false);  // appendToBottom = false
+                        state.messageLoadingState.loadedMessages.add(message._id);
+                    }
+                });
+                // 保持滚动位置
+                const newScrollHeight = messagesContainer.scrollHeight;
+                const heightDiff = newScrollHeight - scrollHeight;
+                messagesContainer.scrollTop = scrollTop + heightDiff;
+            }
+
+            // 如果没有更多消息了，添加提示
+            if (!state.messageLoadingState.hasMore) {
+                // 移除已有的提示（如果存在）
+                const existingNoMore = messagesContainer.querySelector('.no-more-messages');
+                if (existingNoMore) {
+                    existingNoMore.remove();
+                }
+                // 添加新的提示
+                const noMoreMessage = document.createElement('div');
+                noMoreMessage.className = 'no-more-messages';
+                noMoreMessage.textContent = '没有更多历史记录';
+                messagesContainer.insertBefore(noMoreMessage, messagesContainer.firstChild);
+            }
+
+        } else if (reset && state.messageLoadingState.totalCount === 0) {
+            // 只有在确实没有任何消息时才显示空消息提示
+            messagesContainer.innerHTML = `
+                <div class="empty-messages">
+                    <div class="icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h4>开始新的对话</h4>
+                    <p>这是一个新的会话。你可以问任何问题，我会尽力帮助你。</p>
+                    <div class="suggestions">
+                        <div class="suggestion-item" onclick="insertSuggestion(this)">
+                            你能做什么？请介绍一下你的功能。
                         </div>
-                        <h4>开始新的对话</h4>
-                        <p>这是一个新的会话。你可以问任何问题，我会尽力帮助你。</p>
-                        <div class="suggestions">
-                            <div class="suggestion-item" onclick="insertSuggestion(this)">
-                                你能做什么？请介绍一下你的功能。
-                            </div>
-                            <div class="suggestion-item" onclick="insertSuggestion(this)">
-                                请帮我写一段Python代码，实现冒泡排。
-                            </div>
-                            <div class="suggestion-item" onclick="insertSuggestion(this)">
-                                解释一下什么是人工智能？
-                            </div>
+                        <div class="suggestion-item" onclick="insertSuggestion(this)">
+                            请帮我写一段Python代码，实现冒泡排序。
+                        </div>
+                        <div class="suggestion-item" onclick="insertSuggestion(this)">
+                            解释一下什么是人工智能？
                         </div>
                     </div>
-                `;
-            }
+                </div>
+            `;
         }
     } catch (error) {
         console.error('加载会话消息失败:', error);
@@ -571,7 +604,7 @@ function initModals() {
         newConversationModal.addEventListener('hidden.bs.modal', () => {
             // 移除 aria-hidden 属性
             newConversationModal.removeAttribute('aria-hidden');
-            // 重置表单
+            // 重置单
             const form = document.getElementById('newConversationForm');
             if (form) form.reset();
             // 将焦点移回触发按钮
@@ -656,7 +689,7 @@ function bindEventHandlers() {
         });
     }
     
-    // 消息输入框
+    // 消息入框
     const messageInput = document.getElementById('messageInput');
     if (messageInput) {
         // 自动调整高度
@@ -697,7 +730,7 @@ function bindEventHandlers() {
         });
     }
     
-    // 保存系统提示词按钮
+    // 保存系统提示词按
     const savePromptBtn = document.getElementById('savePromptBtn');
     if (savePromptBtn) {
         savePromptBtn.addEventListener('click', async () => {
@@ -871,7 +904,7 @@ async function initializeApp() {
         // 初始化WebSocket连接
         initWebSocket();
         
-        // 初始化模型选择下拉框
+        // 初始化模型选择拉框
         updateModelSelects();
         
         // 绑定事件处理器
@@ -1016,7 +1049,7 @@ function handleWebSocketMessage(data) {
 
             
         default:
-            console.warn('未知的消息类型:', data.type);
+            console.warn('未知的消��类型:', data.type);
     }
 }
 
@@ -1063,7 +1096,7 @@ async function updateSystemPrompt() {
 // 初始化应用
 document.addEventListener('DOMContentLoaded', initializeApp);
 
-// 监听消息容器的滚动事件
+// 监听息器的滚动事件
 document.addEventListener('DOMContentLoaded', function() {
     const messagesContainer = document.getElementById('chatMessages');
     if (messagesContainer) {
@@ -1196,6 +1229,9 @@ function addMessageToChat(message, container = null, appendToBottom = false, isS
     if (isStreaming) {
         messageElement.classList.add('streaming');
     }
+    if (message._id) {
+        messageElement.dataset.id = message._id;
+    }
     
     // 处理消息内容（支持Markdown）
     const content = message.content?.trim() || '';
@@ -1205,24 +1241,19 @@ function addMessageToChat(message, container = null, appendToBottom = false, isS
         smartLists: true,
         smartypants: true
     })
-    .replace(/<p>\s*<\/p>/g, '') // 移除空段落
-    .replace(/<p>\s*<br\s*\/?>\s*<\/p>/g, '') // 移除只包含换行的段落
-    .replace(/\n+$/, '') // 移除末尾的换行符
-    .replace(/<p><\/p>\n/g, '') // 移除段落之间的空行
-    .replace(/\n{2,}/g, '\n') // 将多个连续换行符替换为单个
-    .trim(); // 移除首尾空白
-
-    console.log(message);
+    .replace(/<p>\s*<\/p>/g, '')
+    .replace(/<p>\s*<br\s*\/?>\s*<\/p>/g, '')
+    .replace(/\n+$/, '')
+    .replace(/<p><\/p>\n/g, '')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
 
     // 格式化时间
     let timeStr = '';
     if (message.created_at) {
-        // 处理 MongoDB 格式的时间戳
         if (typeof message.created_at === 'object' && message.created_at.$date) {
             timeStr = formatTimestamp(message.created_at.$date);
-        } 
-        // 处理 ISO 字符串格式的时间戳
-        else if (typeof message.created_at === 'string') {
+        } else if (typeof message.created_at === 'string') {
             timeStr = formatTimestamp(message.created_at);
         }
     }
@@ -1267,7 +1298,7 @@ function showEditPromptModal() {
         // 更新模型选择下拉框
         updateModelSelects();
         
-        // 获取系统提示词和模型ID
+        // 获取系统提示词和型ID
         let systemPrompt = '';
         let modelId = '';
 

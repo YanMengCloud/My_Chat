@@ -36,19 +36,20 @@ class AuthHandler(RequestHandler):
             if not username or not password:
                 logger.warning("登录失败：用户名或密码为空")
                 self.set_status(400)
-                self.write({"error": "用户名和密码不能为空"})
+                self.write({"error": "用户名和��码不能为空"})
                 return
 
             # 查找用户
             user = Database.get_user(username, password)
             if user:
-                logger.info(f"用户 {username} 登录成功")
+                user_id = str(user["_id"])
+                logger.info(f"用户 {username} 登录成功，ID: {user_id}")
                 # 设置会话cookie
-                self.set_secure_cookie("user_id", str(user["_id"]))
+                self.set_secure_cookie("user_id", user_id)
                 self.write(
                     {
                         "success": True,
-                        "user": {"id": str(user["_id"]), "username": user["username"]},
+                        "user": {"id": user_id, "username": user["username"]},
                     }
                 )
             else:

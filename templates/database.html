@@ -342,7 +342,7 @@ async function loadCollections() {
 
 async function loadCollectionData(collection, page, query) {
     try {
-        const response = await fetch(`/api/database/data?collection=${collection}&page=${page}&limit=${PAGE_SIZE}&query=${encodeURIComponent(query)}`, {
+        const response = await fetch(`/api/database/data?collection=${collection}&page=${page}&page_size=${PAGE_SIZE}&query=${encodeURIComponent(query)}`, {
             headers: {
                 'X-XSRFToken': getCookie("_xsrf")
             }
@@ -364,6 +364,9 @@ async function loadCollectionData(collection, page, query) {
             const docCopy = {...doc};
             delete docCopy._id;  // 移除_id字段，因为它已经单独显示
             
+            // 处理MongoDB的ObjectId
+            const docId = doc._id.$oid || doc._id;
+            
             // 安全地处理 JSON 字符串
             const safeJsonString = JSON.stringify(doc)
                 .replace(/&/g, '&amp;')
@@ -373,13 +376,13 @@ async function loadCollectionData(collection, page, query) {
                 .replace(/'/g, '&#39;');
             
             tr.innerHTML = `
-                <td>${doc._id.$oid}</td>
+                <td>${docId}</td>
                 <td class="data-cell">${JSON.stringify(docCopy, null, isFormatted ? 2 : 0)}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick='viewDocument("${doc._id.$oid}", ${safeJsonString})'>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick='viewDocument("${docId}", ${safeJsonString})'>
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument('${doc._id.$oid}')">
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument('${docId}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -446,9 +449,15 @@ function viewDocument(id, doc) {
         const modal = new bootstrap.Modal(document.getElementById('documentModal'));
         document.getElementById('documentId').value = id;
         
+        // 处理MongoDB的特殊类型
+        const processedDoc = {...doc};
+        if (processedDoc._id && processedDoc._id.$oid) {
+            processedDoc._id = processedDoc._id.$oid;
+        }
+        
         // 根据格式化开关设置文档数据
         const isFormatted = document.getElementById('modalFormatSwitch').checked;
-        document.getElementById('documentData').value = JSON.stringify(doc, null, isFormatted ? 2 : 0);
+        document.getElementById('documentData').value = JSON.stringify(processedDoc, null, isFormatted ? 2 : 0);
         
         modal.show();
     } catch (error) {
@@ -487,6 +496,11 @@ async function saveDocument() {
             errorMessage.textContent = 'JSON格式无效';
             errorAlert.classList.remove('d-none');
             return;
+        }
+        
+        // 处理MongoDB的特殊类型
+        if (doc._id && doc._id.$oid) {
+            doc._id = doc._id.$oid;
         }
         
         document.getElementById('documentData').classList.remove('is-invalid');
@@ -531,7 +545,7 @@ async function saveDocument() {
     }
 }
 
-// 在模态框隐藏时重置状态
+// 模态框隐藏时重置状态
 document.getElementById('documentModal').addEventListener('hidden.bs.modal', function () {
     const successAlert = document.getElementById('saveSuccess');
     const errorAlert = document.getElementById('saveError');
@@ -543,10 +557,13 @@ document.getElementById('documentModal').addEventListener('hidden.bs.modal', fun
 });
 
 async function deleteDocument(id) {
-    if (!confirm('确定要删除这条记录吗？此操作不可恢复！')) return;
+    if (!confirm('确定要删除��条记录吗？此操作不可恢复！')) return;
     
     try {
-        const response = await fetch(`/api/database/document?collection=${currentCollection}&id=${id}`, {
+        // 如果id是对象且包含$oid，则使用$oid值
+        const docId = typeof id === 'object' && id.$oid ? id.$oid : id;
+        
+        const response = await fetch(`/api/database/document?collection=${currentCollection}&id=${docId}`, {
             method: 'DELETE',
             headers: {
                 'X-XSRFToken': getCookie("_xsrf")
@@ -586,8 +603,8 @@ async function truncateCollection(collection) {
         if (!data.success) throw new Error(data.error);
         
         // 刷新数据和集合列表
-        loadCollections();
-        loadCollectionData(collection, 1, "{}");
+        await loadCollections();
+        await loadCollectionData(collection, 1, "{}");
         
     } catch (error) {
         console.error('清空集合失败:', error);
